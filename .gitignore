@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Entornos virtuales
+venv/
+env/
+.env
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Imágenes de prueba (para no saturar el repo)
+*.jpg
+*.jpeg
+*.png
+/tests/imagenes_locales/
