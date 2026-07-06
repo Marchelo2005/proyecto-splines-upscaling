@@ -176,15 +176,22 @@ class AppWindow(ctk.CTk):
             except Exception as e:
                 self.lbl_preview_left.configure(text=f"Error al cargar imagen:\n{e}", text_color="#FF3366")
 
-    def actualizar_vista_resultado(self, ruta_salida):
+    def actualizar_vista_resultado(self, ruta_imagen_salida):
         from PIL import Image
-        try:
-            img_pil = Image.open(ruta_salida)
-            img_ctk = ctk.CTkImage(light_image=img_pil, dark_image=img_pil, size=(400, 260))
-            self.lbl_preview_right.configure(image=img_ctk, text="")
-        except Exception as e:
-            self.lbl_preview_right.configure(text=f"Error al mostrar render:\n{e}", text_color="#FF3366")
-
+        import customtkinter as ctk
+    
+    # 1. Cargar la nueva imagen escalada desde el disco
+        img_pil = Image.open(ruta_imagen_salida)
+    
+    # 2. Definir el tamaño del contenedor (puedes ajustarlo según tu diseño)
+    # Por ejemplo, manteniendo el tamaño estándar de tu preview de entrada
+        img_ctk = ctk.CTkImage(light_image=img_pil, dark_image=img_pil, size=(400, 300))
+    
+    # 3. Dibujar la imagen borrando el texto de carga anterior
+        self.lbl_preview_right.configure(image=img_ctk, text="")
+    
+    # 4. Guardar una referencia viva en la instancia para que el recolector de basura no la borre
+        self.imagen_resultado_ref = img_ctk
 
 # Bloque de arranque principal alineado al ras izquierdo
 if __name__ == "__main__":

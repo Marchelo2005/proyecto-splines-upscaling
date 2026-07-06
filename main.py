@@ -39,18 +39,26 @@ def lanzar_hilo_segundo_plano():
         )
         return
 
-    # Capturar copias de las variables para que el hilo trabaje de forma segura e independiente
+    # Capturar copias locales de las variables para el subproceso seguro
     ruta_fija = app.ruta_imagen
     factor_texto = app.combo_escala.get()
     scale_factor = float(factor_texto.replace("x", ""))
 
-    # CAMBIO SEGURO: Modificamos el texto sin tocar la propiedad 'image' bruscamente
+    # 1. LIMPIEZA ABSOLUTA DE TKINTER:
+    # Eliminamos la imagen del widget usando el método nativo del componente base
+    app.lbl_preview_right.configure(image="")
+    app.lbl_preview_right._image = None  # Apaga la caché interna de CustomTkinter
+
+    # 2. Seteamos el texto retro-consola en verde brillante
     app.lbl_preview_right.configure(
         text=f"EJECUTANDO RENDER RASTER ({factor_texto})...\n\nCalculando matrices 4x4\ncon splines bicúbicos.", 
         text_color="#00FFCC"
     )
     
-    # Lanzar el proceso en paralelo libre de cuelgues
+    # 3. Forzamos a la pantalla a redibujarse inmediatamente en negro
+    app.update_idletasks()
+    
+    # Lanzar el hilo en segundo plano con NumPy optimizado
     hilo = threading.Thread(target=ejecutar_proceso_upscaling, args=(app, ruta_fija, scale_factor))
     hilo.start()
 
