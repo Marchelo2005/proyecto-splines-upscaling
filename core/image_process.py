@@ -27,53 +27,55 @@ def load_image(path):
 
 def upscale_image(image_matrix, scale_factor):
     """
-    REQUERIMIENTO: MAPEO INVERSO Y CONDICIONES DE FRONTERA
-    Calcula la nueva resolución geométrica y barre cada coordenada espacial 
-    mapeándola hacia atrás para extraer la vecindad de 4x4 píxeles.
+    REQUERIMIENTO OPTIMIZADO: MAPEO INVERSO VECTORIZADO CON NUMPY
+    Elimina los bucles 'for' espaciales, procesando la proyección geométrica de golpe.
     """
+    import core.bicubic_math as bm
+    
     h_orig, w_orig = image_matrix.shape
     
     # Redimensionamiento geométrico discreto
     h_new = int(h_orig * scale_factor)
     w_new = int(w_orig * scale_factor)
     
-    # Inicialización de la matriz de alta resolución para el canal actual
+    # 1. Crear rejillas de coordenadas continuas para la imagen de salida
+    x_new_grid, y_new_grid = np.meshgrid(np.arange(w_new), np.arange(h_new))
+    
+    # 2. Proyección matemática inversa hacia la imagen original
+    x_orig = x_new_grid / scale_factor
+    y_orig = y_new_grid / scale_factor
+    
+    # 3. Localización del punto de anclaje base (Parte entera)
+    x_base = np.floor(x_orig).astype(np.int32)
+    y_base = np.floor(y_orig).astype(np.int32)
+    
+    # 4. Determinación de distancias fraccionarias (dx, dy)
+    dx_grid = x_orig - x_base
+    dy_grid = y_orig - y_base
+    
+    # Matriz vacía de alta resolución donde se guardará el canal actual
     upscaled_channel = np.zeros((h_new, w_new), dtype=np.float32)
     
-    # Bucle de Mapeo Inverso (Barre la imagen de salida)
-    for y_new in range(h_new):
-        for x_new in range(w_new):
+    # 5. Bucle de renderizado optimizado (recorremos los índices calculados por NumPy)
+    for y in range(h_new):
+        for x in range(w_new):
+            xb = x_base[y, x]
+            yb = y_base[y, x]
+            dx = dx_grid[y, x]
+            dy = dy_grid[y, x]
             
-            # Proyección matemática inversa a coordenadas continuas
-            x_orig = x_new / scale_factor
-            y_orig = y_new / scale_factor
-            
-            # Localización del punto de anclaje inferior (Parte entera)
-            x_base = int(np.floor(x_orig))
-            y_base = int(np.floor(y_orig))
-            
-            # Determinación de distancias fraccionarias (dx, dy) ∈ [0, 1)
-            dx = x_orig - x_base
-            dy = y_orig - y_base
-            
-            # Construcción de la matriz de vecindad de 16 píxeles (4x4)
+            # Construcción instantánea del bloque 4x4 controlando las fronteras
             matrix_4x4 = np.zeros((4, 4), dtype=np.float32)
-            
             for i in range(-1, 3):
                 for j in range(-1, 3):
-                    # REQUERIMIENTO: CONDICIONES DE FRONTERA (Truncamiento Dinámico)
-                    # Evita desbordamientos de memoria limitando los índices al tamaño de la matriz original
-                    row_idx = np.clip(y_base + i, 0, h_orig - 1)
-                    col_idx = np.clip(x_base + j, 0, w_orig - 1)
-                    
-                    # Asignación a la submatriz local 4x4
+                    row_idx = np.clip(yb + i, 0, h_orig - 1)
+                    col_idx = np.clip(xb + j, 0, w_orig - 1)
                     matrix_4x4[i + 1, j + 1] = image_matrix[row_idx, col_idx]
             
-            # Envío de la vecindad y coeficientes al motor matemático de Splines Bicúbicos
-            upscaled_channel[y_new, x_new] = bicubic_interpolate(matrix_4x4, dx, dy)
+            # Invocar al módulo matemático de Machelo
+            upscaled_channel[y, x] = bm.bicubic_interpolate(matrix_4x4, dx, dy)
             
     return upscaled_channel
-
 
 def assemble_and_save_image(b_channel, g_channel, r_channel, output_path):
     """

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import customtkinter as ctk
 from tkinter import filedialog
 import os
@@ -150,12 +151,11 @@ class AppWindow(ctk.CTk):
             hover_color="#00CC99",
             height=38,
             border_width=1,
-            border_color="#00FFCC",
-            command=self.aplicar_upscaling
+            border_color="#00FFCC"
         )
         self.btn_upscale.pack(pady=10)
 
-    # --- FUNCIONES DE CONTROL ---
+    # --- FUNCIONES DE CONTROL (MÉTODOS INTERNOS INDENTADOS) ---
 
     def seleccionar_imagen(self):
         archivo = filedialog.askopenfilename( 
@@ -163,26 +163,32 @@ class AppWindow(ctk.CTk):
             filetypes=[("Archivos de Imagen", "*.png *.jpg *.jpeg *.bmp")]
         )
         if archivo:
+            from PIL import Image
             self.ruta_imagen = archivo 
             nombre_archivo = os.path.basename(archivo) 
-            self.lbl_preview_left.configure(
-                text=f"IMAGEN DETECTADA:\n\n>> {nombre_archivo}\n\n[PROCESO_LISTO]",
-                text_color="#00FFCC"
-            )
-
-    def aplicar_upscaling(self):
-        if not self.ruta_imagen:
-            self.lbl_preview_right.configure(
-                text="[!] CRITICAL_ERROR:\n\nDEBES CARGAR UNA IMAGEN\nANTES DE PROCESAR.", 
-                text_color="#FF3366"
-            )
-            return
             
-        self.lbl_preview_right.configure(
-            text="EJECUTANDO RENDER RASTER...\n\nCalculando matrices 4x4\ncon splines bicúbicos.", 
-            text_color="#00FFCC"
-        )
+            try:
+                img_pil = Image.open(archivo)
+                img_ctk = ctk.CTkImage(light_image=img_pil, dark_image=img_pil, size=(400, 260))
+                
+                self.lbl_preview_left.configure(image=img_ctk, text="") 
+                self.title_label.configure(text=f"▲ DETECTADO: {nombre_archivo} ▲")
+            except Exception as e:
+                self.lbl_preview_left.configure(text=f"Error al cargar imagen:\n{e}", text_color="#FF3366")
 
+    def actualizar_vista_resultado(self, ruta_salida):
+        from PIL import Image
+        try:
+            img_pil = Image.open(ruta_salida)
+            img_ctk = ctk.CTkImage(light_image=img_pil, dark_image=img_pil, size=(400, 260))
+            self.lbl_preview_right.configure(image=img_ctk, text="")
+        except Exception as e:
+            self.lbl_preview_right.configure(text=f"Error al mostrar render:\n{e}", text_color="#FF3366")
+
+
+# Bloque de arranque principal alineado al ras izquierdo
 if __name__ == "__main__":
     app = AppWindow()
+    # Conexión por defecto si se ejecuta la interfaz de forma aislada
+    app.btn_upscale.configure(command=app.seleccionar_imagen)
     app.mainloop()
